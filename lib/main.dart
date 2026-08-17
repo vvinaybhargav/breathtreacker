@@ -31,7 +31,7 @@ class BreathTrackApp extends StatelessWidget {
           surface: Color(0xFF1E293B),
           background: Color(0xFF0B0F19),
         ),
-        cardTheme: const CardTheme(
+        cardTheme: const CardThemeData(
           color: Color(0xFF151F32),
           elevation: 0,
         ),
@@ -614,7 +614,7 @@ class _BreathingTrackerHomeState extends State<BreathingTrackerHome>
                     Expanded(
                       child: Text(
                         feedbackTip,
-                        style: const TextStyle(fontSize: 13, height: 1.5, color: Colors.white80),
+                        style: const TextStyle(fontSize: 13, height: 1.5, color: Color(0xCCFFFFFF)),
                       ),
                     ),
                   ],
