@@ -122,9 +122,13 @@ class _BreathingTrackerHomeState extends State<BreathingTrackerHome>
 
   // Visual Breathing Pacer (Resonant Breathing Guide)
   bool _pacerEnabled = false;
-  double _targetBpm = 6.0; // Standard deep breathing target (10s cycle)
+  double _pacerInhaleSec = 4.0; // Default target inhale: 4 seconds
+  double _pacerExhaleSec = 5.0; // Default target exhale: 5 seconds
   late AnimationController _pacerController;
   
+  // Real-time phase tracking timer
+  DateTime? _phaseStartTime;
+
   // User settings
   String _sensitivity = 'Medium'; // 'High', 'Medium', 'Low'
   String _axisOverride = 'Auto'; // 'Auto', 'Force X', 'Force Y', 'Force Z'
@@ -132,12 +136,13 @@ class _BreathingTrackerHomeState extends State<BreathingTrackerHome>
   @override
   void initState() {
     super.initState();
-    // Initialize Pacer Controller (runs continuously in background, active visually when toggle is on)
+    // Initialize Pacer Controller (runs forward from 0.0 to 1.0 continuously)
+    double totalCycleSec = _pacerInhaleSec + _pacerExhaleSec;
     _pacerController = AnimationController(
       vsync: this,
-      duration: Duration(milliseconds: (60000 / _targetBpm).round()),
+      duration: Duration(milliseconds: (totalCycleSec * 1000).round()),
     );
-    _pacerController.repeat(reverse: true);
+    _pacerController.repeat(reverse: false);
   }
 
   @override
@@ -174,6 +179,7 @@ class _BreathingTrackerHomeState extends State<BreathingTrackerHome>
     _breathHistory.clear();
     _chartBuffer.clear();
     _recentDetrendedBuffer.clear();
+    _phaseStartTime = null;
   }
 
   void _startTracking() {
@@ -182,6 +188,7 @@ class _BreathingTrackerHomeState extends State<BreathingTrackerHome>
       _isTracking = true;
       _sessionStartTime = DateTime.now();
       _lastValleyTime = DateTime.now(); // Baseline starting reference
+      _phaseStartTime = DateTime.now();
     });
 
     // Start session timer
@@ -249,6 +256,7 @@ class _BreathingTrackerHomeState extends State<BreathingTrackerHome>
             _baselineVal = newRaw;
             _recentDetrendedBuffer.clear();
             _currentPhase = 'HOLDING';
+            _phaseStartTime = DateTime.now();
           }
         }
       } else {
@@ -297,12 +305,14 @@ class _BreathingTrackerHomeState extends State<BreathingTrackerHome>
           _localMax = detrendedVal;
           _timeOfMax = now;
           _lastValleyTime = now;
+          _phaseStartTime = now;
           stateChanged = true;
         } else if (detrendedVal < -delta) {
           _currentPhase = 'EXHALING';
           _localMin = detrendedVal;
           _timeOfMin = now;
           _lastPeakTime = now;
+          _phaseStartTime = now;
           stateChanged = true;
         }
       } else if (_currentPhase == 'INHALING') {
@@ -326,6 +336,7 @@ class _BreathingTrackerHomeState extends State<BreathingTrackerHome>
               }
             }
             _lastPeakTime = peakTime;
+            _phaseStartTime = now;
             stateChanged = true;
             HapticFeedback.lightImpact(); // Subtle vibration feedback
           }
@@ -377,6 +388,7 @@ class _BreathingTrackerHomeState extends State<BreathingTrackerHome>
             }
 
             _lastValleyTime = valleyTime;
+            _phaseStartTime = now;
             stateChanged = true;
             HapticFeedback.mediumImpact(); // Distinct vibration feedback at end of exhale
           }
@@ -811,28 +823,83 @@ class _BreathingTrackerHomeState extends State<BreathingTrackerHome>
                   
                   if (_pacerEnabled) ...[
                     const SizedBox(height: 16),
+                    // Show calculated BPM summary
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1E293B),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(color: Colors.white.withOpacity(0.05)),
+                      ),
+                      child: Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          const Text(
+                            'Calculated Pacer Rate:',
+                            style: TextStyle(fontSize: 12, color: Colors.white70),
+                          ),
+                          Text(
+                            '${(60.0 / (_pacerInhaleSec + _pacerExhaleSec)).toStringAsFixed(1)} BPM',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF00F2FE),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+                    // Slider 1: Inhale Duration
                     Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Text('Target Breath Rate:', style: TextStyle(fontSize: 13, color: Colors.white70)),
-                        Text('${_targetBpm.round()} BPM', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF00F2FE))),
+                        const Text('Inhale Duration:', style: TextStyle(fontSize: 13, color: Colors.white70)),
+                        Text('${_pacerInhaleSec.round()}s', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFF00F2FE))),
                       ],
                     ),
                     Slider(
-                      value: _targetBpm,
-                      min: 4.0,
-                      max: 15.0,
-                      divisions: 11,
+                      value: _pacerInhaleSec,
+                      min: 2.0,
+                      max: 8.0,
+                      divisions: 6,
                       activeColor: const Color(0xFF00F2FE),
                       inactiveColor: Colors.white10,
                       onChanged: (val) {
                         setModalState(() {
-                          _targetBpm = val;
+                          _pacerInhaleSec = val;
                         });
                         setState(() {
-                          _targetBpm = val;
-                          _pacerController.duration = Duration(milliseconds: (60000 / _targetBpm).round());
-                          _pacerController.repeat(reverse: true);
+                          _pacerInhaleSec = val;
+                          double totalCycleSec = _pacerInhaleSec + _pacerExhaleSec;
+                          _pacerController.duration = Duration(milliseconds: (totalCycleSec * 1000).round());
+                          _pacerController.repeat(reverse: false);
+                        });
+                      },
+                    ),
+                    // Slider 2: Exhale Duration
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        const Text('Exhale Duration:', style: TextStyle(fontSize: 13, color: Colors.white70)),
+                        Text('${_pacerExhaleSec.round()}s', style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFD946EF))),
+                      ],
+                    ),
+                    Slider(
+                      value: _pacerExhaleSec,
+                      min: 2.0,
+                      max: 8.0,
+                      divisions: 6,
+                      activeColor: const Color(0xFFD946EF),
+                      inactiveColor: Colors.white10,
+                      onChanged: (val) {
+                        setModalState(() {
+                          _pacerExhaleSec = val;
+                        });
+                        setState(() {
+                          _pacerExhaleSec = val;
+                          double totalCycleSec = _pacerInhaleSec + _pacerExhaleSec;
+                          _pacerController.duration = Duration(milliseconds: (totalCycleSec * 1000).round());
+                          _pacerController.repeat(reverse: false);
                         });
                       },
                     ),
@@ -871,6 +938,12 @@ class _BreathingTrackerHomeState extends State<BreathingTrackerHome>
         stateTitle = _isTracking ? 'CALIBRATING...' : 'READY';
         stateIcon = Icons.hourglass_empty;
         break;
+    }
+
+    // Calculate elapsed time in the current breathing phase
+    double elapsedPhaseSeconds = 0.0;
+    if (_isTracking && _phaseStartTime != null) {
+      elapsedPhaseSeconds = DateTime.now().difference(_phaseStartTime!).inMilliseconds / 1000.0;
     }
 
     // Format timer
@@ -1018,8 +1091,21 @@ class _BreathingTrackerHomeState extends State<BreathingTrackerHome>
                           AnimatedBuilder(
                             animation: _pacerController,
                             builder: (context, child) {
-                              double pacerValue = _pacerController.value;
-                              double pacerScale = 1.0 + (pacerValue * 0.7); // scale up to 1.7x
+                              double t = _pacerController.value;
+                              double totalCycleSec = _pacerInhaleSec + _pacerExhaleSec;
+                              double r = _pacerInhaleSec / totalCycleSec;
+                              double pacerScale;
+                              
+                              if (t < r) {
+                                // Inhale phase: expand
+                                double p = t / r;
+                                pacerScale = 1.0 + (p * 0.7);
+                              } else {
+                                // Exhale phase: contract
+                                double p = (t - r) / (1.0 - r);
+                                pacerScale = 1.7 - (p * 0.7);
+                              }
+                              
                               return Container(
                                 width: 150 * pacerScale,
                                 height: 150 * pacerScale,
@@ -1065,10 +1151,53 @@ class _BreathingTrackerHomeState extends State<BreathingTrackerHome>
                               ),
                             ],
                           ),
-                          child: Icon(
-                            _isTracking ? Icons.center_focus_strong : Icons.play_arrow_outlined,
-                            size: 32,
-                            color: Colors.white.withOpacity(0.8),
+                          child: Center(
+                            child: !_isTracking
+                                ? Icon(
+                                    Icons.play_arrow_outlined,
+                                    size: 40,
+                                    color: Colors.white.withOpacity(0.8),
+                                  )
+                                : Padding(
+                                    padding: const EdgeInsets.all(8.0),
+                                    child: Column(
+                                      mainAxisAlignment: MainAxisAlignment.center,
+                                      children: [
+                                        Text(
+                                          _currentPhase == 'HOLDING' ? 'CALIBRATE' : _currentPhase,
+                                          style: TextStyle(
+                                            fontSize: 9 * circleScale,
+                                            fontWeight: FontWeight.bold,
+                                            letterSpacing: 0.5,
+                                            color: Colors.white.withOpacity(0.85),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          "${elapsedPhaseSeconds.toStringAsFixed(1)}s",
+                                          style: TextStyle(
+                                            fontSize: 16 * circleScale,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.white,
+                                          ),
+                                        ),
+                                        if (_pacerEnabled) ...[
+                                          const SizedBox(height: 2),
+                                          Text(
+                                            _currentPhase == 'INHALING'
+                                                ? "Target: ${_pacerInhaleSec.round()}s"
+                                                : (_currentPhase == 'EXHALING'
+                                                    ? "Target: ${_pacerExhaleSec.round()}s"
+                                                    : ""),
+                                            style: TextStyle(
+                                              fontSize: 7.5 * circleScale,
+                                              color: Colors.white.withOpacity(0.5),
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                  ),
                           ),
                         ),
 
