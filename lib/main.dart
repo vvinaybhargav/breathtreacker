@@ -485,6 +485,9 @@ class _BreathingTrackerHomeState extends State<BreathingTrackerHome>
       backgroundColor: Colors.transparent,
       builder: (context) {
         return Container(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.88,
+          ),
           decoration: const BoxDecoration(
             color: Color(0xFF131B2E),
             borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
@@ -492,9 +495,8 @@ class _BreathingTrackerHomeState extends State<BreathingTrackerHome>
               top: BorderSide(color: Color(0xFF1E293B), width: 1.5),
             ),
           ),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
           child: Column(
-            mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Center(
@@ -507,7 +509,7 @@ class _BreathingTrackerHomeState extends State<BreathingTrackerHome>
                   ),
                 ),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
               const Text(
                 'Session Summary',
                 textAlign: TextAlign.center,
@@ -517,122 +519,216 @@ class _BreathingTrackerHomeState extends State<BreathingTrackerHome>
                   letterSpacing: 0.5,
                 ),
               ),
-              const SizedBox(height: 32),
-              
-              // 2x2 Grid for Session Metrics
-              GridView.count(
-                shrinkWrap: true,
-                crossAxisCount: 2,
-                crossAxisSpacing: 16,
-                mainAxisSpacing: 16,
-                childAspectRatio: 1.5,
-                physics: const NeverScrollableScrollPhysics(),
-                children: [
-                  _buildSummaryCard('Session Duration', durationString, Icons.timer, const Color(0xFF3B82F6)),
-                  _buildSummaryCard('Total Breaths', '$totalBreaths', Icons.air, const Color(0xFF00F2FE)),
-                  _buildSummaryCard('Average BPM', '${avgBpm.toStringAsFixed(1)} BPM', Icons.favorite, const Color(0xFFD946EF)),
-                  _buildSummaryCard('Consistency', consistency, Icons.analytics, consistencyColor),
-                ],
-              ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 20),
+              Expanded(
+                child: SingleChildScrollView(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      // 2x2 Grid for Session Metrics
+                      GridView.count(
+                        shrinkWrap: true,
+                        crossAxisCount: 2,
+                        crossAxisSpacing: 16,
+                        mainAxisSpacing: 16,
+                        childAspectRatio: 1.5,
+                        physics: const NeverScrollableScrollPhysics(),
+                        children: [
+                          _buildSummaryCard('Session Duration', durationString, Icons.timer, const Color(0xFF3B82F6)),
+                          _buildSummaryCard('Total Breaths', '$totalBreaths', Icons.air, const Color(0xFF00F2FE)),
+                          _buildSummaryCard('Average BPM', '${avgBpm.toStringAsFixed(1)} BPM', Icons.favorite, const Color(0xFFD946EF)),
+                          _buildSummaryCard('Consistency', consistency, Icons.analytics, consistencyColor),
+                        ],
+                      ),
+                      const SizedBox(height: 24),
 
-              // Inhale/Exhale breakdown bar
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1E293B),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.white.withOpacity(0.05)),
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                  children: [
-                    const Text(
-                      'Average Breath Phase Ratio',
-                      style: TextStyle(fontSize: 12, color: Colors.white60, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 16),
-                    Row(
-                      children: [
-                        Expanded(
-                          flex: (avgInhale * 10).round(),
-                          child: Container(
-                            height: 24,
-                            alignment: Alignment.center,
-                            decoration: const BoxDecoration(
-                              gradient: LinearGradient(colors: [Color(0xFF00F2FE), Color(0xFF4FACFE)]),
-                              borderRadius: BorderRadius.horizontal(left: Radius.circular(12)),
-                            ),
-                            child: Text('${avgInhale.toStringAsFixed(1)}s', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.black)),
-                          ),
+                      // Inhale/Exhale breakdown bar
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF1E293B),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: Colors.white.withOpacity(0.05)),
                         ),
-                        Expanded(
-                          flex: (avgExhale * 10).round(),
-                          child: Container(
-                            height: 24,
-                            alignment: Alignment.center,
-                            decoration: const BoxDecoration(
-                              gradient: LinearGradient(colors: [Color(0xFFF43F5E), Color(0xFFD946EF)]),
-                              borderRadius: BorderRadius.horizontal(right: Radius.circular(12)),
-                            ),
-                            child: Text('${avgExhale.toStringAsFixed(1)}s', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white)),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: 8),
-                    const Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [
-                        Row(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            Icon(Icons.arrow_upward, size: 12, color: Color(0xFF00F2FE)),
-                            SizedBox(width: 4),
-                            Text('Inhale', style: TextStyle(fontSize: 11, color: Colors.white60)),
+                            const Text(
+                              'Average Breath Phase Ratio',
+                              style: TextStyle(fontSize: 12, color: Colors.white60, fontWeight: FontWeight.bold),
+                            ),
+                            const SizedBox(height: 16),
+                            Row(
+                              children: [
+                                Expanded(
+                                  flex: (avgInhale * 10).round(),
+                                  child: Container(
+                                    height: 24,
+                                    alignment: Alignment.center,
+                                    decoration: const BoxDecoration(
+                                      gradient: LinearGradient(colors: [Color(0xFF00F2FE), Color(0xFF4FACFE)]),
+                                      borderRadius: BorderRadius.horizontal(left: Radius.circular(12)),
+                                    ),
+                                    child: Text('${avgInhale.toStringAsFixed(1)}s', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.black)),
+                                  ),
+                                ),
+                                Expanded(
+                                  flex: (avgExhale * 10).round(),
+                                  child: Container(
+                                    height: 24,
+                                    alignment: Alignment.center,
+                                    decoration: const BoxDecoration(
+                                      gradient: LinearGradient(colors: [Color(0xFFF43F5E), Color(0xFFD946EF)]),
+                                      borderRadius: BorderRadius.horizontal(right: Radius.circular(12)),
+                                    ),
+                                    child: Text('${avgExhale.toStringAsFixed(1)}s', style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Colors.white)),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            const Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Row(
+                                  children: [
+                                    Icon(Icons.arrow_upward, size: 12, color: Color(0xFF00F2FE)),
+                                    SizedBox(width: 4),
+                                    Text('Inhale', style: TextStyle(fontSize: 11, color: Colors.white60)),
+                                  ],
+                                ),
+                                Row(
+                                  children: [
+                                    Text('Exhale', style: TextStyle(fontSize: 11, color: Colors.white60)),
+                                    SizedBox(width: 4),
+                                    Icon(Icons.arrow_downward, size: 12, color: Color(0xFFD946EF)),
+                                  ],
+                                ),
+                              ],
+                            ),
                           ],
                         ),
-                        Row(
+                      ),
+                      const SizedBox(height: 24),
+
+                      // Feedback Banner
+                      Container(
+                        padding: const EdgeInsets.all(16),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              const Color(0xFF1E293B),
+                              const Color(0xFF151F32).withOpacity(0.5),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(color: const Color(0xFF00F2FE).withOpacity(0.1)),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text('Exhale', style: TextStyle(fontSize: 11, color: Colors.white60)),
-                            SizedBox(width: 4),
-                            Icon(Icons.arrow_downward, size: 12, color: Color(0xFFD946EF)),
+                            const Icon(Icons.spa, color: Color(0xFF00F2FE), size: 24),
+                            const SizedBox(width: 12),
+                            Expanded(
+                              child: Text(
+                                feedbackTip,
+                                style: const TextStyle(fontSize: 13, height: 1.5, color: Color(0xCCFFFFFF)),
+                              ),
+                            ),
                           ],
                         ),
-                      ],
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
+                      ),
+                      const SizedBox(height: 24),
 
-              // Feedback Banner
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      const Color(0xFF1E293B),
-                      const Color(0xFF151F32).withOpacity(0.5),
+                      // Breath-by-Breath Duration Log
+                      const Text(
+                        'Breath-by-Breath Log',
+                        style: TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.bold,
+                          letterSpacing: 0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+                      ListView.builder(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: _breathHistory.length,
+                        itemBuilder: (context, index) {
+                          final cycle = _breathHistory[index];
+                          final startSec = cycle.startTime.difference(_sessionStartTime!).inMilliseconds / 1000.0;
+                          final peakSec = cycle.peakTime.difference(_sessionStartTime!).inMilliseconds / 1000.0;
+                          final endSec = cycle.endTime.difference(_sessionStartTime!).inMilliseconds / 1000.0;
+                          
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF1E293B),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.white.withOpacity(0.03)),
+                            ),
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                              children: [
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Breath #${index + 1}',
+                                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Text(
+                                      '${cycle.bpm.toStringAsFixed(1)} BPM',
+                                      style: TextStyle(fontSize: 10, color: Colors.white.withOpacity(0.4)),
+                                    ),
+                                  ],
+                                ),
+                                Column(
+                                  crossAxisAlignment: CrossAxisAlignment.end,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        const Icon(Icons.arrow_upward, size: 10, color: Color(0xFF00F2FE)),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          'Inhale: ${startSec.round()}-${peakSec.round()}s',
+                                          style: const TextStyle(fontSize: 11, color: Colors.white70),
+                                        ),
+                                        Text(
+                                          ' (${(cycle.inhaleDuration.inMilliseconds / 1000.0).toStringAsFixed(1)}s)',
+                                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFF00F2FE)),
+                                        ),
+                                      ],
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Row(
+                                      children: [
+                                        const Icon(Icons.arrow_downward, size: 10, color: Color(0xFFD946EF)),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          'Exhale: ${peakSec.round()}-${endSec.round()}s',
+                                          style: const TextStyle(fontSize: 11, color: Colors.white70),
+                                        ),
+                                        Text(
+                                          ' (${(cycle.exhaleDuration.inMilliseconds / 1000.0).toStringAsFixed(1)}s)',
+                                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: Color(0xFFD946EF)),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          );
+                        },
+                      ),
                     ],
                   ),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: const Color(0xFF00F2FE).withOpacity(0.1)),
-                ),
-                child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Icon(Icons.spa, color: Color(0xFF00F2FE), size: 24),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Text(
-                        feedbackTip,
-                        style: const TextStyle(fontSize: 13, height: 1.5, color: Color(0xCCFFFFFF)),
-                      ),
-                    ),
-                  ],
                 ),
               ),
-              const SizedBox(height: 32),
+              const SizedBox(height: 16),
 
               // Close Button
               ElevatedButton(
