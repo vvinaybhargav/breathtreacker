@@ -1,0 +1,65 @@
+name: Build Android APK
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build Release APK
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Java Development Kit (JDK 17)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+          cache: 'gradle'
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Initialize Project Files
+        run: |
+          # If the android project folder isn't in Git, generate it dynamically
+          if [ ! -d "android" ]; then
+            echo "Android directory not found. Re-generating Flutter project structure..."
+            flutter create --org com.vinay.breathtrack --project-name breathtrack .
+          fi
+
+      - name: Inject Android Sensor Permissions
+        run: |
+          # Add the HIGH_SAMPLING_RATE_SENSORS permission if it doesn't already exist in AndroidManifest.xml
+          MANIFEST_PATH="android/app/src/main/AndroidManifest.xml"
+          if [ -f "$MANIFEST_PATH" ]; then
+            if ! grep -q "HIGH_SAMPLING_RATE_SENSORS" "$MANIFEST_PATH"; then
+              echo "Injecting sensor permission into $MANIFEST_PATH..."
+              # Inserts the uses-permission tag directly below the <manifest> tag
+              sed -i '/<manifest/a \    <uses-permission android:name="android.permission.HIGH_SAMPLING_RATE_SENSORS" />' "$MANIFEST_PATH"
+            fi
+          fi
+
+      - name: Install Dependencies
+        run: flutter pub get
+
+      - name: Build Release APK
+        # Build split APKs for different ABIs (smaller file size) as well as the universal APK
+        run: flutter build apk --split-per-abi --release
+
+      - name: Upload Build Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: breathtrack-release-apks
+          path: build/app/outputs/flutter-apk/*.apk
+          if-no-files-found: error
+          retention-days: 7
