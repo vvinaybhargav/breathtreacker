@@ -12,6 +12,9 @@ jobs:
     name: Build Release APK
     runs-on: ubuntu-latest
 
+    permissions:
+      contents: write
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -52,14 +55,37 @@ jobs:
       - name: Install Dependencies
         run: flutter pub get
 
-      - name: Build Release APK
-        # Build split APKs for different ABIs (smaller file size) as well as the universal APK
-        run: flutter build apk --split-per-abi --release
+      - name: Build Release APK (ARM64-v8a only)
+        run: flutter build apk --target-platform android-arm64 --release
 
-      - name: Upload Build Artifacts
-        uses: actions/upload-artifact@v4
-        with:
-          name: breathtrack-release-apks
-          path: build/app/outputs/flutter-apk/*.apk
-          if-no-files-found: error
-          retention-days: 7
+      - name: Prepare APK Release Asset
+        run: |
+          # Get current date and time in Indian Standard Time (IST)
+          IST_DATE_12=$(TZ="Asia/Kolkata" date +'%b%d-%I%M%p-IST')
+          IST_DATE_24=$(TZ="Asia/Kolkata" date +'%b%d-%H%M-IST')
+          
+          echo "IST_DATE_12=$IST_DATE_12" >> $GITHUB_ENV
+          echo "IST_DATE_24=$IST_DATE_24" >> $GITHUB_ENV
+          
+          # Rename and copy the compiled APK to the root workspace
+          cp build/app/outputs/flutter-apk/app-release.apk ./BreathTrack-$IST_DATE_12.apk
+          echo "Renamed APK to BreathTrack-$IST_DATE_12.apk"
+
+      - name: Publish Release on GitHub
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # 1. Create the 'latest' release if it doesn't exist
+          gh release view latest || gh release create latest --title "BreathTrack IST Build ($IST_DATE_24)" --notes "Latest BreathTrack APK build ($IST_DATE_12)."
+          
+          # 2. Update the release metadata
+          gh release edit latest --title "BreathTrack IST Build ($IST_DATE_24)" --notes "Latest BreathTrack APK build ($IST_DATE_12)."
+          
+          # 3. Delete previous assets to keep the latest release clean (only holds the most recent build)
+          for asset in $(gh release view latest --json assets --jq '.assets[].name'); do
+            echo "Deleting old release asset: $asset..."
+            gh release delete-asset latest "$asset" --yes
+          done
+          
+          # 4. Upload the new timestamped APK
+          gh release upload latest ./BreathTrack-$IST_DATE_12.apk --clobber
